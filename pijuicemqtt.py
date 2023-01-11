@@ -41,6 +41,8 @@ def load_config(config_file):
             "port": 1883,
             "username": None,
             "password": None,
+            "retain": False,
+            "qos": 1
         },
         "homeassistant": {
             "topic": "homeassistant",
@@ -60,13 +62,13 @@ def mqtt_on_connect(client, userdata, flags, rc):
     client.will_set(
         f"{SERVICE_NAME}/{config['hostname']}/service",
         payload="offline",
-        qos=1,
+        qos=config['mqtt']['qos'],
         retain=True,
     )
     client.publish(
         f"{SERVICE_NAME}/{config['hostname']}/service",
         payload="online",
-        qos=1,
+        qos=config['mqtt']['qos'],
         retain=True,
     )
 
@@ -105,7 +107,7 @@ def mqtt_on_connect(client, userdata, flags, rc):
         client.publish(
             f"{config['homeassistant']['topic']}/sensor/{SERVICE_NAME}-{config['hostname']}/batteryCharge/config",
             dumps({**base_payload, **payload}),
-            qos=1,
+            qos=config['mqtt']['qos'],
             retain=True,
         )
 
@@ -121,7 +123,7 @@ def mqtt_on_connect(client, userdata, flags, rc):
         client.publish(
             f"{config['homeassistant']['topic']}/binary_sensor/{SERVICE_NAME}-{config['hostname']}/powerInput5vIo/config",
             dumps({**base_payload, **payload}),
-            qos=1,
+            qos=config['mqtt']['qos'],
             retain=True,
         )
 
@@ -138,7 +140,7 @@ def mqtt_on_connect(client, userdata, flags, rc):
         client.publish(
             f"{config['homeassistant']['topic']}/sensor/{SERVICE_NAME}-{config['hostname']}/batteryTemperature/config",
             dumps({**base_payload, **payload}),
-            qos=1,
+            qos=config['mqtt']['qos'],
             retain=True,
         )
 
@@ -153,7 +155,7 @@ def mqtt_on_connect(client, userdata, flags, rc):
         client.publish(
             f"{config['homeassistant']['topic']}/sensor/{SERVICE_NAME}-{config['hostname']}/batteryStatus/config",
             dumps({**base_payload, **payload}),
-            qos=1,
+            qos=config['mqtt']['qos'],
             retain=True,
         )
 
@@ -167,7 +169,7 @@ def on_exit(signum, frame):
     client.publish(
         f"{SERVICE_NAME}/{config['hostname']}/service",
         payload="offline",
-        qos=1,
+        qos=config['mqtt']['qos'],
         retain=True,
     )
     timer_thread.cancel()
@@ -191,7 +193,7 @@ def publish_pijuice():
             client.publish(
                 f"{SERVICE_NAME}/{config['hostname']}/service",
                 payload="online",
-                qos=1,
+                qos=config['mqtt']['qos'],
                 retain=True,
             )
 
@@ -209,7 +211,9 @@ def publish_pijuice():
         }
         client.publish(
             f"{SERVICE_NAME}/{config['hostname']}/status",
-            dumps(pijuice_status),
+            payload=dumps(pijuice_status),
+            qos=config['mqtt']['qos'],
+            retain=config['mqtt']['retain'],
         )
     except KeyError:
         print("Could not read PiJuice data, skipping")

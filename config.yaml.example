@@ -5,6 +5,8 @@ mqtt:
   port: 1883
   username: mymqttusername  # Login to broker. Delete if not required
   password: mymqttpassword  # Login to broker. Delete if not required
+  retain: false
+  qos: 1
 
 homeassistant:
   topic: homeassistant  # MQTT Autodiscovery root topic
