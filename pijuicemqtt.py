@@ -8,13 +8,13 @@ import signal
 import sys
 import threading
 from json import dumps
+import socket
 
 import paho.mqtt.client as mqtt
 import yaml
 from pijuice import PiJuice
 from pijuice import __version__ as library_version
 
-SERVICE_NAME = "pijuicemqtt"
 
 parser = argparse.ArgumentParser(description="PiJuice to MQTT")
 parser.add_argument(
@@ -41,6 +41,7 @@ def load_config(config_file):
             "port": 1883,
             "username": None,
             "password": None,
+            "topic_prefix": "pijuice/$HOSTNAME",
         },
         "homeassistant": {
             "topic": "homeassistant",
@@ -58,13 +59,13 @@ def mqtt_on_connect(client, userdata, flags, rc):
     """Renew subscriptions and set Last Will message when connect to broker."""
     # Set up Last Will, and then set services' status to 'online'
     client.will_set(
-        f"{SERVICE_NAME}/{config['hostname']}/service",
+        base_topic,
         payload="offline",
         qos=1,
         retain=True,
     )
     client.publish(
-        f"{SERVICE_NAME}/{config['hostname']}/service",
+        base_topic,
         payload="online",
         qos=1,
         retain=True,
@@ -77,14 +78,14 @@ def mqtt_on_connect(client, userdata, flags, rc):
         battery_capacity = pijuice.config.GetBatteryProfile()["data"]["capacity"]
         firmware_version = pijuice.config.GetFirmwareVersion()["data"]["version"]
         base_payload = {
-            "availability_topic": f"{SERVICE_NAME}/{config['hostname']}/service",
+            "availability_topic": base_topic,
             "payload_available": "online",
             "payload_not_available": "offline",
-            "state_topic": f"{SERVICE_NAME}/{config['hostname']}/status",
-            "json_attributes_topic": f"{SERVICE_NAME}/{config['hostname']}/status",
+            "state_topic": f"{base_topic}/status",
+            "json_attributes_topic": f"{base_topic}/status",
             "device": {
-                "identifiers": [f"{SERVICE_NAME}-{config['hostname']}"],
-                "name": f"{config['hostname']} PiJuice",
+                "identifiers": [f"pijuice-{hostname}"],
+                "name": f"{hostname} PiJuice",
                 "sw_version": f"Library {library_version}, Firmware {firmware_version}",
                 "model": f"PiJuice {battery_capacity} mAh",
                 "manufacturer": "PiSupply",
@@ -96,14 +97,14 @@ def mqtt_on_connect(client, userdata, flags, rc):
 
         # Battery charge percentage
         payload = {
-            "name": f"{config['hostname']} PiJuice Battery",
-            "unique_id": f"{SERVICE_NAME}-{config['hostname']}-batteryCharge",
+            "name": f"{hostname} PiJuice Battery",
+            "unique_id": f"pijuice-{hostname}-batteryCharge",
             "value_template": "{{ value_json.batteryCharge }}",
             "device_class": "battery",
             "unit_of_measurement": "%",
         }
         client.publish(
-            f"{config['homeassistant']['topic']}/sensor/{SERVICE_NAME}-{config['hostname']}/batteryCharge/config",
+            f"{config['homeassistant']['topic']}/sensor/pijuice-{hostname}/batteryCharge/config",
             dumps({**base_payload, **payload}),
             qos=1,
             retain=True,
@@ -111,15 +112,15 @@ def mqtt_on_connect(client, userdata, flags, rc):
 
         # Power/No Power binary sensor
         payload = {
-            "name": f"{config['hostname']} PiJuice PowerInput5vIo",
-            "unique_id": f"{SERVICE_NAME}-{config['hostname']}-powerInput5vIo",
+            "name": f"{hostname} PiJuice PowerInput5vIo",
+            "unique_id": f"pijuice-{hostname}-powerInput5vIo",
             "value_template": "{{ value_json.powerInput5vIo }}",
             "payload_off": "NOT_PRESENT",
             "payload_on": "PRESENT",
             "device_class": "power",
         }
         client.publish(
-            f"{config['homeassistant']['topic']}/binary_sensor/{SERVICE_NAME}-{config['hostname']}/powerInput5vIo/config",
+            f"{config['homeassistant']['topic']}/binary_sensor/pijuice-{hostname}/powerInput5vIo/config",
             dumps({**base_payload, **payload}),
             qos=1,
             retain=True,
@@ -127,8 +128,8 @@ def mqtt_on_connect(client, userdata, flags, rc):
 
         # Battery Temperature sensor
         payload = {
-            "name": f"{config['hostname']} PiJuice BatteryTemperature",
-            "unique_id": f"{SERVICE_NAME}-{config['hostname']}-batteryTemperature",
+            "name": f"{hostname} PiJuice BatteryTemperature",
+            "unique_id": f"pijuice-{hostname}-batteryTemperature",
             "value_template": "{{ value_json.batteryTemperature }}",
             "device_class": "temperature",
             "unit_of_measurement": "°C",
@@ -136,7 +137,7 @@ def mqtt_on_connect(client, userdata, flags, rc):
             "entity_category": "diagnostic",
         }
         client.publish(
-            f"{config['homeassistant']['topic']}/sensor/{SERVICE_NAME}-{config['hostname']}/batteryTemperature/config",
+            f"{config['homeassistant']['topic']}/sensor/pijuice-{hostname}/batteryTemperature/config",
             dumps({**base_payload, **payload}),
             qos=1,
             retain=True,
@@ -144,14 +145,14 @@ def mqtt_on_connect(client, userdata, flags, rc):
 
         # Battery Status sensor
         payload = {
-            "name": f"{config['hostname']} PiJuice BatteryStatus",
-            "unique_id": f"{SERVICE_NAME}-{config['hostname']}-batteryStatus",
+            "name": f"{hostname} PiJuice BatteryStatus",
+            "unique_id": f"pijuice-{hostname}-batteryStatus",
             "value_template": "{{ value_json.batteryStatus }}",
             "enabled_by_default": False,
             "entity_category": "diagnostic",
         }
         client.publish(
-            f"{config['homeassistant']['topic']}/sensor/{SERVICE_NAME}-{config['hostname']}/batteryStatus/config",
+            f"{config['homeassistant']['topic']}/sensor/pijuice-{hostname}/batteryStatus/config",
             dumps({**base_payload, **payload}),
             qos=1,
             retain=True,
@@ -165,7 +166,7 @@ def on_exit(signum, frame):
     """
     print("Exiting...")
     client.publish(
-        f"{SERVICE_NAME}/{config['hostname']}/service",
+        base_topic,
         payload="offline",
         qos=1,
         retain=True,
@@ -189,7 +190,7 @@ def publish_pijuice():
 
         if "publish_online_status" in config and config["publish_online_status"]:
             client.publish(
-                f"{SERVICE_NAME}/{config['hostname']}/service",
+                base_topic,
                 payload="online",
                 qos=1,
                 retain=True,
@@ -208,7 +209,7 @@ def publish_pijuice():
             "io_vurrent": pijuice.status.GetIoCurrent()["data"] / 1000,
         }
         client.publish(
-            f"{SERVICE_NAME}/{config['hostname']}/status",
+            f"{base_topic}/status",
             dumps(pijuice_status),
         )
     except KeyError:
@@ -216,6 +217,11 @@ def publish_pijuice():
 
 
 config = load_config(args.config_file)
+
+# get device host name - used in mqtt topic
+hostname = socket.gethostname()
+base_topic = config["mqtt"]["topic_prefix"]
+base_topic = base_topic.replace("$HOSTNAME", hostname)
 
 if __name__ == "__main__":
     client = mqtt.Client()
