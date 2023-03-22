@@ -197,15 +197,15 @@ def publish_pijuice():
 
         status = pijuice.status.GetStatus()["data"]
         pijuice_status = {
-            "batteryCharge": pijuice.status.GetChargeLevel()["data"],
-            "batteryVoltage": pijuice.status.GetBatteryVoltage()["data"] / 1000,
-            "batteryCurrent": pijuice.status.GetBatteryCurrent()["data"] / 1000,
-            "batteryTemperature": pijuice.status.GetBatteryTemperature()["data"],
-            "batteryStatus": status["battery"],
-            "powerInput": status["powerInput"],
-            "powerInput5vIo": status["powerInput5vIo"],
-            "ioVoltage": pijuice.status.GetIoVoltage()["data"] / 1000,
-            "ioCurrent": pijuice.status.GetIoCurrent()["data"] / 1000,
+            "battery_charge": pijuice.status.GetChargeLevel()["data"],
+            "battery_voltage": pijuice.status.GetBatteryVoltage()["data"] / 1000,
+            "battery_current": pijuice.status.GetBatteryCurrent()["data"] / 1000,
+            "battery_temperature": pijuice.status.GetBatteryTemperature()["data"],
+            "battery_status": status["battery"],
+            "power_input": status["powerInput"],
+            "power_input_5vio": status["powerInput5vIo"],
+            "io_voltage": pijuice.status.GetIoVoltage()["data"] / 1000,
+            "io_vurrent": pijuice.status.GetIoCurrent()["data"] / 1000,
         }
         client.publish(
             f"{SERVICE_NAME}/{config['hostname']}/status",
