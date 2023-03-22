@@ -42,6 +42,8 @@ def load_config(config_file):
             "username": None,
             "password": None,
             "topic_prefix": "pijuice/$HOSTNAME",
+            "retain": False,
+            "qos": 1
         },
         "homeassistant": {
             "topic": "homeassistant",
@@ -211,6 +213,8 @@ def publish_pijuice():
         client.publish(
             f"{base_topic}/status",
             dumps(pijuice_status),
+            qos=config["mqtt"]["qos"],
+            retain=config["mqtt"]["retain"]
         )
     except KeyError:
         print("Could not read PiJuice data, skipping")

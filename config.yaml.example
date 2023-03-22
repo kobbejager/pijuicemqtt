@@ -6,6 +6,8 @@ mqtt:
   username: mymqttusername  # Login to broker. Delete if not required
   password: mymqttpassword  # Login to broker. Delete if not required
   topic_prefix: pijuice/$HOSTNAME
+  retain: false
+  qos: 1
 
 homeassistant:
   topic: homeassistant  # MQTT Autodiscovery root topic
