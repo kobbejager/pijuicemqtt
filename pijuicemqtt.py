@@ -9,6 +9,7 @@ import sys
 import threading
 from json import dumps
 import socket
+from datetime import datetime, timezone
 
 import paho.mqtt.client as mqtt
 import yaml
@@ -209,6 +210,7 @@ def publish_pijuice():
             "power_input_5vio": status["powerInput5vIo"],
             "io_voltage": pijuice.status.GetIoVoltage()["data"] / 1000,
             "io_vurrent": pijuice.status.GetIoCurrent()["data"] / 1000,
+            "timestamp": datetime.now(timezone.utc).astimezone().isoformat('T', 'seconds')
         }
         client.publish(
             f"{base_topic}/status",
